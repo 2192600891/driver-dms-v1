@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>驾驶行为监测</title>
+  <style>
+    :root {
+      --bg: #08101f;
+      --panel: #111a2d;
+      --panel-border: #233453;
+      --accent: #2d5bd6;
+      --accent-soft: #4f6fb5;
+      --text: #edf2ff;
+      --muted: #94a3c8;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --ok: #22c55e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(45, 91, 214, 0.22), transparent 36%),
+        radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.18), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+
+    .page {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      background: rgba(17, 26, 45, 0.94);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 20px 40px rgba(2, 6, 23, 0.28);
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-badge {
+      min-width: 148px;
+      text-align: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.18);
+      border: 1px solid rgba(34, 197, 94, 0.45);
+      font-weight: 700;
+    }
+
+    .video-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 2px solid var(--accent);
+      background: linear-gradient(160deg, #0c1730, #132848);
+      aspect-ratio: 4 / 3;
+    }
+
+    video, canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .video-wrap::after {
+      content: "实时预览";
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      color: rgba(237, 242, 255, 0.84);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      min-height: 46px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      background: linear-gradient(120deg, #2d5bd6, #1f7ae0);
+    }
+
+    button.secondary {
+      background: linear-gradient(120deg, #31456f, #496593);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .metric {
+      background: rgba(32, 48, 82, 0.78);
+      border: 1px solid rgba(74, 101, 160, 0.45);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric span {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .pill-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .pill {
+      background: rgba(24, 38, 66, 0.88);
+      border: 1px solid rgba(74, 101, 160, 0.45);
+      border-radius: 14px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .pill.active {
+      border-color: rgba(239, 68, 68, 0.65);
+      background: rgba(127, 29, 29, 0.36);
+    }
+
+    .progress {
+      height: 16px;
+      border-radius: 999px;
+      background: rgba(36, 56, 92, 0.85);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--ok), #0ea5e9);
+      transition: width 120ms linear, background 120ms linear;
+    }
+
+    .hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .logs {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .logs li {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(24, 38, 66, 0.88);
+      border: 1px solid rgba(74, 101, 160, 0.35);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (min-width: 860px) {
+      .layout {
+        display: grid;
+        grid-template-columns: 1.3fr 0.9fr;
+        gap: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel hero">
+      <div>
+        <h1>驾驶行为检测系统</h1>
+        <p>手机摄像头本地预览，GPUHub 实时分析疲劳与分心行为</p>
+      </div>
+      <div id="stateBadge" class="status-badge">系统待机</div>
+    </section>
+
+    <section class="layout">
+      <div class="grid">
+        <div class="panel video-wrap">
+          <video id="preview" autoplay playsinline muted></video>
+          <canvas id="captureCanvas" hidden></canvas>
+        </div>
+        <div class="panel">
+          <div class="actions">
+            <button id="startBtn">开始检测</button>
+            <button id="stopBtn" class="secondary" disabled>停止</button>
+          </div>
+          <div class="hint" id="networkText">等待连接服务器</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section class="panel">
+          <div class="card-title">
+            <span>疲劳评估</span>
+            <span id="fatigueState">状态：正常</span>
+          </div>
+          <div class="grid two">
+            <div class="metric">
+              <strong>眨眼</strong>
+              <span id="blinkCount">0</span>
+            </div>
+            <div class="metric">
+              <strong>哈欠</strong>
+              <span id="yawnCount">0</span>
+            </div>
+          </div>
+          <div class="hint" id="fatigueText">低风险 0%</div>
+          <div class="progress"><div id="fatigueBar" class="progress-bar"></div></div>
+        </section>
+
+        <section class="panel">
+          <div class="card-title">
+            <span>分心识别</span>
+            <span id="hintText">提示：未发现异常</span>
+          </div>
+          <div class="pill-row">
+            <div id="pillPhone" class="pill">手机 0</div>
+            <div id="pillSmoke" class="pill">吸烟 0</div>
+            <div id="pillDrink" class="pill">饮水 0</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="card-title">
+            <span>运行信息</span>
+            <span id="deviceInfo">设备</span>
+          </div>
+          <div class="grid two">
+            <div class="metric">
+              <strong>FPS</strong>
+              <span id="fpsValue">0.0</span>
+            </div>
+            <div class="metric">
+              <strong>帧数</strong>
+              <span id="frameCount">0</span>
+            </div>
+            <div class="metric">
+              <strong>时长</strong>
+              <span id="runtimeText">00:00</span>
+            </div>
+            <div class="metric">
+              <strong>标签</strong>
+              <span id="labelText">无</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="card-title">
+            <span>事件日志</span>
+          </div>
+          <ul class="logs" id="logs"></ul>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const preview = document.getElementById("preview");
+    const captureCanvas = document.getElementById("captureCanvas");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const stateBadge = document.getElementById("stateBadge");
+    const networkText = document.getElementById("networkText");
+    const fatigueState = document.getElementById("fatigueState");
+    const fatigueText = document.getElementById("fatigueText");
+    const fatigueBar = document.getElementById("fatigueBar");
+    const blinkCount = document.getElementById("blinkCount");
+    const yawnCount = document.getElementById("yawnCount");
+    const hintText = document.getElementById("hintText");
+    const pillPhone = document.getElementById("pillPhone");
+    const pillSmoke = document.getElementById("pillSmoke");
+    const pillDrink = document.getElementById("pillDrink");
+    const fpsValue = document.getElementById("fpsValue");
+    const frameCount = document.getElementById("frameCount");
+    const runtimeText = document.getElementById("runtimeText");
+    const labelText = document.getElementById("labelText");
+    const deviceInfo = document.getElementById("deviceInfo");
+    const logs = document.getElementById("logs");
+
+    let stream = null;
+    let socket = null;
+    let sendTimer = null;
+    let inFlight = false;
+    let isRunning = false;
+    let sessionId = null;
+
+    function wsUrl() {
+      const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${location.host}/ws/monitor`;
+    }
+
+    function setBadge(text, tone = "ok") {
+      stateBadge.textContent = text;
+      const toneMap = {
+        ok: ["rgba(34, 197, 94, 0.18)", "rgba(34, 197, 94, 0.45)"],
+        warn: ["rgba(245, 158, 11, 0.18)", "rgba(245, 158, 11, 0.45)"],
+        danger: ["rgba(239, 68, 68, 0.18)", "rgba(239, 68, 68, 0.45)"],
+        idle: ["rgba(79, 111, 181, 0.18)", "rgba(79, 111, 181, 0.45)"],
+      };
+      const [bg, border] = toneMap[tone];
+      stateBadge.style.background = bg;
+      stateBadge.style.borderColor = border;
+    }
+
+    function renderLogs(entries) {
+      logs.innerHTML = "";
+      entries.forEach((entry) => {
+        const li = document.createElement("li");
+        li.textContent = entry;
+        logs.appendChild(li);
+      });
+    }
+
+    function updatePill(node, label, count, active) {
+      node.textContent = `${label} ${count}`;
+      node.classList.toggle("active", active);
+    }
+
+    function updateFatigueBar(percent, level) {
+      fatigueBar.style.width = `${percent}%`;
+      if (level === "高风险") {
+        fatigueBar.style.background = "linear-gradient(90deg, #ef4444, #fb7185)";
+        setBadge("疲劳预警", "danger");
+      } else if (level === "需关注") {
+        fatigueBar.style.background = "linear-gradient(90deg, #f59e0b, #fbbf24)";
+        setBadge("需关注", "warn");
+      } else if (isRunning) {
+        fatigueBar.style.background = "linear-gradient(90deg, #22c55e, #0ea5e9)";
+        setBadge("检测中", "ok");
+      }
+    }
+
+    async function startCamera() {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: false
+      });
+      preview.srcObject = stream;
+      await preview.play();
+    }
+
+    function stopCamera() {
+      if (!stream) return;
+      stream.getTracks().forEach((track) => track.stop());
+      stream = null;
+    }
+
+    function captureFrame() {
+      if (!preview.videoWidth || !preview.videoHeight) return null;
+      captureCanvas.width = preview.videoWidth;
+      captureCanvas.height = preview.videoHeight;
+      const ctx = captureCanvas.getContext("2d");
+      ctx.drawImage(preview, 0, 0, captureCanvas.width, captureCanvas.height);
+      return captureCanvas.toDataURL("image/jpeg", 0.65);
+    }
+
+    function connectSocket() {
+      return new Promise((resolve, reject) => {
+        socket = new WebSocket(wsUrl());
+        socket.onopen = () => {
+          networkText.textContent = "服务器连接成功，等待会话初始化";
+        };
+        socket.onerror = () => reject(new Error("WebSocket 连接失败"));
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === "ready") {
+            sessionId = data.session_id;
+            networkText.textContent = `会话已建立：${sessionId.slice(0, 8)}`;
+            resolve();
+            return;
+          }
+          if (data.type === "result") {
+            inFlight = false;
+            renderResult(data);
+          }
+        };
+        socket.onclose = () => {
+          if (isRunning) {
+            networkText.textContent = "连接已断开，请重新开始检测";
+            stopDetection();
+          }
+        };
+      });
+    }
+
+    function renderResult(data) {
+      const fatigue = data.fatigue;
+      const behavior = data.behavior;
+      const runtime = data.runtime;
+      const runtimeInfo = data.runtime_info;
+
+      fatigueState.textContent = fatigue.state_text;
+      fatigueText.textContent = `${fatigue.fatigue_level} ${fatigue.fatigue_percent}%`;
+      blinkCount.textContent = String(fatigue.blink_total);
+      yawnCount.textContent = String(fatigue.yawn_total);
+      hintText.textContent = behavior.hint;
+      fpsValue.textContent = runtime.fps.toFixed(1);
+      frameCount.textContent = String(runtime.frame_count);
+      runtimeText.textContent = runtime.runtime_text;
+      labelText.textContent = data.labels.length ? data.labels.join(" / ") : "无";
+      deviceInfo.textContent = runtimeInfo.device_type === "cuda" ? `CUDA ${runtimeInfo.device}` : runtimeInfo.device;
+
+      updatePill(pillPhone, "手机", behavior.phone_count, behavior.phone_active);
+      updatePill(pillSmoke, "吸烟", behavior.smoke_count, behavior.smoke_active);
+      updatePill(pillDrink, "饮水", behavior.drink_count, behavior.drink_active);
+      updateFatigueBar(fatigue.fatigue_percent, fatigue.fatigue_level);
+      renderLogs(data.logs);
+    }
+
+    function pumpFrames() {
+      sendTimer = window.setInterval(() => {
+        if (!isRunning || !socket || socket.readyState !== WebSocket.OPEN || inFlight) {
+          return;
+        }
+        const image = captureFrame();
+        if (!image) {
+          return;
+        }
+        inFlight = true;
+        socket.send(JSON.stringify({
+          type: "frame",
+          image,
+          session_id: sessionId
+        }));
+      }, 300);
+    }
+
+    async function startDetection() {
+      try {
+        startBtn.disabled = true;
+        await startCamera();
+        await connectSocket();
+        isRunning = true;
+        stopBtn.disabled = false;
+        networkText.textContent = "画面采集中，检测结果由服务器返回";
+        setBadge("检测中", "ok");
+        pumpFrames();
+      } catch (error) {
+        networkText.textContent = error.message;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        stopCamera();
+        if (socket) {
+          socket.close();
+          socket = null;
+        }
+        setBadge("系统待机", "idle");
+      }
+    }
+
+    function stopDetection() {
+      isRunning = false;
+      inFlight = false;
+      if (sendTimer) {
+        window.clearInterval(sendTimer);
+        sendTimer = null;
+      }
+      if (socket) {
+        socket.close();
+        socket = null;
+      }
+      stopCamera();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      sessionId = null;
+      setBadge("系统待机", "idle");
+    }
+
+    startBtn.addEventListener("click", startDetection);
+    stopBtn.addEventListener("click", stopDetection);
+    setBadge("系统待机", "idle");
+  </script>
+</body>
+</html>

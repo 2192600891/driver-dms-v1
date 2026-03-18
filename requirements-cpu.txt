@@ -1,0 +1,20 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Core runtime
+torch==2.10.0+cpu
+torchvision==0.25.0+cpu
+torchaudio==2.10.0+cpu
+numpy==1.26.4
+opencv-python==4.8.1.78
+imutils==0.5.4
+scipy==1.15.3
+PySide2==5.15.2.1
+
+# YOLOv5 utility deps used by this repo
+matplotlib==3.10.8
+pandas==2.3.3
+seaborn==0.13.2
+PyYAML==6.0.3
+tqdm==4.67.3
+Pillow==12.0.0
+requests==2.32.5
