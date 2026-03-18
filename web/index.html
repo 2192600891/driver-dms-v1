@@ -353,6 +353,7 @@
     let inFlight = false;
     let isRunning = false;
     let sessionId = null;
+    const FRAME_INTERVAL_MS = 100;
 
     function wsUrl() {
       const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -496,7 +497,7 @@
           image,
           session_id: sessionId
         }));
-      }, 300);
+      }, FRAME_INTERVAL_MS);
     }
 
     async function startDetection() {
